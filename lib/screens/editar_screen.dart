@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
-//import 'package:go_router/go_router.dart';
-import 'package:seminari_flutter/provider/users_provider.dart';
+import 'package:seminari_flutter/provider/users_provider.dart'; // Corregido
 import 'package:provider/provider.dart';
 import 'package:seminari_flutter/widgets/Layout.dart';
+import 'package:seminari_flutter/models/user.dart'; // Correct import path
 
 class EditarScreen extends StatefulWidget {
-  const EditarScreen({super.key});
+  final User user; // Recibe el usuario autenticado
+
+  const EditarScreen({super.key, required this.user});
 
   @override
   State<EditarScreen> createState() => _EditarScreenState();
@@ -13,10 +15,23 @@ class EditarScreen extends StatefulWidget {
 
 class _EditarScreenState extends State<EditarScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  final nomController = TextEditingController();
-  final edatController = TextEditingController();
-  final emailController = TextEditingController();
-  final passwordController = TextEditingController();
+  late TextEditingController nomController;
+  late TextEditingController edatController;
+  late TextEditingController emailController;
+  late TextEditingController passwordController; // Definido correctamente
+  late TextEditingController oldPasswordController;
+  late TextEditingController newPasswordController;
+
+  @override
+  void initState() {
+    super.initState();
+    nomController = TextEditingController(text: widget.user.name);
+    edatController = TextEditingController(text: widget.user.age.toString());
+    emailController = TextEditingController(text: widget.user.email);
+    passwordController = TextEditingController(); // Inicializado
+    oldPasswordController = TextEditingController();
+    newPasswordController = TextEditingController();
+  }
 
   @override
   void dispose() {
@@ -24,167 +39,143 @@ class _EditarScreenState extends State<EditarScreen> {
     edatController.dispose();
     emailController.dispose();
     passwordController.dispose();
+    oldPasswordController.dispose();
+    newPasswordController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final provider = Provider.of<UserProvider>(context, listen: true);
-
-    return LayoutWrapper(
-      title: 'Create User',
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 600),
+    return Scaffold(
+      appBar: AppBar(title: const Text('Editar Perfil')),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            Form(
+              key: _formKey,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Card(
-                    elevation: 4,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(20.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Crear nou usuari',
-                            style: Theme.of(context).textTheme.headlineSmall,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Omple el formulari a continuació per afegir un nou usuari al sistema.',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                        ],
-                      ),
-                    ),
+                  _buildFormField(controller: nomController, label: 'Nombre', icon: Icons.person),
+                  const SizedBox(height: 16),
+                  _buildFormField(controller: edatController, label: 'Edad', icon: Icons.cake, keyboardType: TextInputType.number),
+                  const SizedBox(height: 16),
+                  _buildFormField(controller: emailController, label: 'Correo Electrónico', icon: Icons.email, keyboardType: TextInputType.emailAddress),
+                  const SizedBox(height: 32),
+                  ElevatedButton(
+                    onPressed: () async {
+                      print('Botón "Guardar Cambios" presionado');
+                      if (_formKey.currentState!.validate()) {
+                        print('Nombre: ${nomController.text}');
+                        print('Edad: ${edatController.text}');
+                        print('Correo Electrónico: ${emailController.text}');
+
+                        if (nomController.text.isEmpty ||
+                            edatController.text.isEmpty ||
+                            emailController.text.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Todos los campos son obligatorios'),
+                            ),
+                          );
+                          return;
+                        }
+
+                        final provider = Provider.of<UserProvider>(context, listen: false);
+                        final updatedUser = User(
+                          id: widget.user.id, // Asegúrate de que 'id' no sea null
+                          name: nomController.text,
+                          age: int.tryParse(edatController.text) ?? 0,
+                          email: emailController.text,
+                          password: widget.user.password, // Obtiene la contraseña del usuario autenticado
+                        );
+                        try {
+                          final success = await provider.updateUser(updatedUser);
+                          if (success) {
+                            print('Perfil actualizado correctamente.');
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Perfil actualizado correctamente')),
+                            );
+                            if (!context.mounted) return;
+                            Navigator.pop(context);
+                          } else {
+                            throw Exception(provider.error ?? "Error desconocido");
+                          }
+                        } catch (e) {
+                          print('Error al actualizar perfil: $e');
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Error al actualizar: $e')),
+                          );
+                        }
+                      }
+                    },
+                    child: const Text('Guardar Cambios'),
                   ),
-                  const SizedBox(height: 24),
-                  Card(
-                    elevation: 4,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(24.0),
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _buildFormField(
-                              controller: nomController,
-                              label: 'Nom',
-                              icon: Icons.person,
-                              validator: (value) => value == null || value.isEmpty 
-                                  ? 'Cal omplir el nom' 
-                                  : null,
-                            ),
-                            const SizedBox(height: 16),
-                            _buildFormField(
-                              controller: edatController,
-                              label: 'Edat',
-                              icon: Icons.cake,
-                              keyboardType: TextInputType.number,
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Cal omplir l\'edat';
-                                }
-                                final age = int.tryParse(value);
-                                if (age == null || age < 0) {
-                                  return 'Si us plau, insereix una edat vàlida';
-                                }
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: 16),
-                            _buildFormField(
-                              controller: emailController,
-                              label: 'Correu electrònic',
-                              icon: Icons.email,
-                              keyboardType: TextInputType.emailAddress,
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'El correu electrònic no pot estar buit';
-                                }
-                                if (!value.contains('@')) {
-                                  return 'Si us plau insereix una adreça vàlida';
-                                }
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: 16),
-                            _buildFormField(
-                              controller: passwordController,
-                              label: 'Contrasenya',
-                              icon: Icons.lock,
-                              obscureText: true,
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'La contrasenya no pot estar buida';
-                                }
-                                if (value.length < 6) {
-                                  return 'La contrasenya ha de tenir almenys 6 caràcters';
-                                }
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: 32),
-                            ElevatedButton.icon(
-                              onPressed: () {
-                                if (_formKey.currentState!.validate()) {
-                                  provider.crearUsuari(
-                                    nomController.text,
-                                    int.tryParse(edatController.text) ?? 0,
-                                    emailController.text,
-                                    passwordController.text,
-                                  );
+                  const Divider(height: 40),
+                  _buildFormField(
+                    controller: oldPasswordController,
+                    label: 'Contraseña Actual',
+                    icon: Icons.lock,
+                    obscureText: true,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildFormField(
+                    controller: newPasswordController,
+                    label: 'Nueva Contraseña',
+                    icon: Icons.lock,
+                    obscureText: true,
+                  ),
+                  const SizedBox(height: 32),
+                  ElevatedButton(
+                    onPressed: () async {
+                      print('Botón "Guardar Contraseña" presionado');
+                      print('Nueva Contraseña: ${newPasswordController.text}');
 
-                                  nomController.clear();
-                                  edatController.clear();
-                                  emailController.clear();
-                                  passwordController.clear();
+                      if (newPasswordController.text.isEmpty) {
+                        print('Error: Nueva contraseña vacía');
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('La nueva contraseña no puede estar vacía')),
+                        );
+                        return;
+                      }
 
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: const Text('Usuari creat correctament!'),
-                                      backgroundColor: Colors.green,
-                                      behavior: SnackBarBehavior.floating,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                    ),
-                                  );
-                                }
-                              },
-                              icon: const Icon(Icons.save),
-                              label: const Text(
-                                'CREAR USUARI',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                                backgroundColor: Theme.of(context).colorScheme.primary,
-                                foregroundColor: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                      final provider = Provider.of<UserProvider>(context, listen: false);
+                      try {
+                        final success = await provider.changePassword(widget.user.id!, newPasswordController.text);
+                        if (success) {
+                          print('Contraseña cambiada correctamente.');
+
+                          // Actualizar los datos del usuario autenticado
+                          final updatedUser = User(
+                            id: widget.user.id,
+                            name: widget.user.name,
+                            age: widget.user.age,
+                            email: widget.user.email,
+                            password: newPasswordController.text, // Actualizar la contraseña
+                          );
+                          provider.setLoggedInUser(updatedUser.toJson());
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Contraseña cambiada correctamente')),
+                          );
+                          oldPasswordController.clear();
+                          newPasswordController.clear();
+                        } else {
+                          throw Exception(provider.error ?? "Error desconocido");
+                        }
+                      } catch (e) {
+                        print('Error al cambiar contraseña: $e');
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error al cambiar contraseña: $e')),
+                        );
+                      }
+                    },
+                    child: const Text('Guardar Contraseña'),
                   ),
                 ],
               ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -214,4 +205,24 @@ class _EditarScreenState extends State<EditarScreen> {
       validator: validator,
     );
   }
+
+  void _updateUser(BuildContext context) async {
+    final provider = Provider.of<UserProvider>(context, listen: false);
+    final updatedUser = User(
+      id: widget.user.id,
+      name: nomController.text,
+      age: int.parse(edatController.text),
+      email: emailController.text,
+      password: widget.user.password, 
+    );
+
+    final success = await provider.updateUser(updatedUser);
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Profile updated!')));
+      Navigator.pop(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update profile.')));
+    }
+  }
+
 }

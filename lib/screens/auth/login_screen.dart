@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import 'package:seminari_flutter/components/my_textfield.dart';
 import 'package:seminari_flutter/components/my_button.dart';
 import 'package:seminari_flutter/services/auth_service.dart';
+import 'package:seminari_flutter/provider/users_provider.dart'; // Correct import path
 
 class LoginPage extends StatelessWidget {
   LoginPage({super.key});
@@ -26,7 +28,10 @@ class LoginPage extends StatelessWidget {
     if (result.containsKey('error')) {
       _showError(context, result['error']);
     } else {
-      context.go('/');
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      userProvider.setLoggedInUser(result); // Guardar datos del usuario autenticado
+      print("Usuari autenticat: ${result['id']}"); // Log para verificar el ID
+      context.go('/profile'); // Navegar a la pantalla de perfil
     }
   }
 

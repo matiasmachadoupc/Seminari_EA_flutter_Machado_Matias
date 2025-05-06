@@ -33,7 +33,9 @@ class AuthService {
       print("Resposta rebuda amb codi: ${response.statusCode}");
 
       if (response.statusCode == 200) {
-        return json.decode(response.body);
+        final data = json.decode(response.body);
+        print("Dades rebudes: $data"); // Log para verificar la respuesta
+        return data;
       } else {
         return {'error': 'email o contrasenya incorrectes'};
       }

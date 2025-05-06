@@ -6,10 +6,12 @@ class UserProvider with ChangeNotifier {
   List<User> _users = [];
   bool _isLoading = false;
   String? _error;
+  User? _loggedInUser;
 
   List<User> get users => _users;
   bool get isLoading => _isLoading;
   String? get error => _error;
+  User? get loggedInUser => _loggedInUser;
 
   void _setLoading(bool loading) {
     _isLoading = loading;
@@ -24,7 +26,6 @@ class UserProvider with ChangeNotifier {
   Future<void> loadUsers() async {
     _setLoading(true);
     _setError(null);
-    //notifyListeners();
 
     try {
       _users = await UserService.getUsers();
@@ -36,28 +37,47 @@ class UserProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> crearUsuari(String nom, int edat, String email, String password) async {
+  void setLoggedInUser(Map<String, dynamic> userData) {
+    _loggedInUser = User.fromJson(userData); // Asegúrate de que 'id' se asigna correctamente
+    print("Usuario establecido en UserProvider: ${_loggedInUser?.id}"); // Log para verificar
+    notifyListeners();
+  }
+
+  void clearLoggedInUser() {
+    _loggedInUser = null;
+    notifyListeners();
+  }
+
+  Future<bool> updateUser(User updatedUser) async {
     _setLoading(true);
     _setError(null);
 
     try {
-      final nouUsuari = User(name: nom, age: edat, email: email,password: password);
-      final createdUser = await UserService.createUser(nouUsuari);
-      _users.add(nouUsuari);
+      final updateData = {
+        'name': updatedUser.name,
+        'age': updatedUser.age,
+        'email': updatedUser.email,
+      }; // Excluye campos innecesarios o nulos
+
+      final success = await UserService.updateUser(updatedUser.id!, updateData);
+      if (success) {
+        _loggedInUser = updatedUser;
+        notifyListeners();
+      }
       _setLoading(false);
-      notifyListeners();
-      return true;
+      return success;
     } catch (e) {
-      _setError('Error creating user: $e');
+      _setError('Error updating user: $e');
       _setLoading(false);
       return false;
     }
   }
 
-  Future<bool> eliminarUsuariPerId (String id) async {
+  Future<bool> eliminarUsuariPerId(String id) async {
     _setLoading(true);
     _setError(null);
-    try{
+
+    try {
       final success = await UserService.deleteUser(id);
       if (success) {
         _users.removeWhere((user) => user.id == id);
@@ -71,34 +91,17 @@ class UserProvider with ChangeNotifier {
       return false;
     }
   }
-  Future<bool> eliminarUsuari(String name) async {
+
+  Future<bool> changePassword(String userId, String newPassword) async {
     _setLoading(true);
     _setError(null);
 
     try {
-      // Trobem l'usuari pel nom
-      final userToDelete = _users.firstWhere((user) => user.name == name);
-      
-      if (userToDelete.id != null) {
-        final success = await UserService.deleteUser(userToDelete.id!);
-        
-        if (success) {
-          // Eliminar l'usuari de la llista local
-          _users.removeWhere((user) => user.name == name);
-          notifyListeners();
-        }
-        
-        _setLoading(false);
-        return success;
-      } else {
-        // Si no té id, eliminar localment
-        _users.removeWhere((user) => user.name == name);
-        notifyListeners();
-        _setLoading(false);
-        return true;
-      }
+      final success = await UserService.changePassword(userId, newPassword);
+      _setLoading(false);
+      return success;
     } catch (e) {
-      _setError('Error deleting user: $e');
+      _setError('Error changing password: $e');
       _setLoading(false);
       return false;
     }

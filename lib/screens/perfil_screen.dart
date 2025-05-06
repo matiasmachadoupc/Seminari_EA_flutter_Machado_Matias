@@ -1,13 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import '../widgets/Layout.dart';
 import '../services/auth_service.dart';
+import 'package:seminari_flutter/provider/users_provider.dart'; // Correct import path
 
 class PerfilScreen extends StatelessWidget {
   const PerfilScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final userProvider = Provider.of<UserProvider>(context);
+    final user = userProvider.loggedInUser;
+
+    if (user == null) {
+      return Center(child: Text('No hi ha cap usuari autenticat.'));
+    }
+
     return LayoutWrapper(
       title: 'Perfil',
       child: SingleChildScrollView(
@@ -26,14 +35,14 @@ class PerfilScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    'Exemple',
+                    user.name,
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'demo@exemple.com',
+                    user.email,
                     style: Theme.of(
                       context,
                     ).textTheme.titleMedium?.copyWith(color: Colors.grey),
@@ -52,10 +61,36 @@ class PerfilScreen extends StatelessWidget {
                             context,
                             Icons.badge,
                             'ID',
-                            '67f8f3103368468b6e9d509c',
+                            user.id ?? 'No disponible', // Asegúrate de que 'id' no sea null
                           ),
                           const Divider(),
-                          _buildProfileItem(context, Icons.cake, 'Edat', '22'),
+                          _buildProfileItem(
+                            context,
+                            Icons.person,
+                            'Nombre',
+                            user.name,
+                          ),
+                          const Divider(),
+                          _buildProfileItem(
+                            context,
+                            Icons.cake,
+                            'Edad',
+                            user.age.toString(),
+                          ),
+                          const Divider(),
+                          _buildProfileItem(
+                            context,
+                            Icons.email,
+                            'Correo Electrónico',
+                            user.email,
+                          ),
+                          const Divider(),
+                          _buildProfileItem(
+                            context,
+                            Icons.lock,
+                            'Contraseña',
+                            user.password, // Ocultar la contraseña
+                          ),
                         ],
                       ),
                     ),

@@ -6,16 +6,14 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 
 class UserService {
   static String get baseUrl {
-  if (kIsWeb) {
-    return 'http://localhost:9000/api/users';
-  } 
-  else if (!kIsWeb && Platform.isAndroid) {
-    return 'http://10.0.2.2:9000/api/users';
-  } 
-  else {
-    return 'http://localhost:9000/api/users';
+    if (kIsWeb) {
+      return 'http://localhost:9000/api/users'; // Verifica que el puerto sea correcto
+    } else if (!kIsWeb && Platform.isAndroid) {
+      return 'http://10.0.2.2:9000/api/users'; // Dirección para emulador Android
+    } else {
+      return 'http://localhost:9000/api/users'; // Dirección para otros entornos
+    }
   }
-}
 
   static Future<List<User>> getUsers() async {
     final response = await http.get(Uri.parse(baseUrl));
@@ -52,17 +50,28 @@ class UserService {
     }
   }
 
-  static Future<User> updateUser(String id, User user) async {
+  static Future<bool> updateUser(String id, Map<String, dynamic> updateData) async {
+    print('Intentando actualizar usuario...');
+    print('URL: $baseUrl/$id'); // Verifica que esta ruta coincida con el backend
+    print('Body: ${jsonEncode(updateData)}'); // Verifica los datos enviados
+
+    if (updateData['name'] == null || updateData['age'] == null || updateData['email'] == null) {
+      throw Exception('Error: Datos incompletos para actualizar el usuario.');
+    }
+
     final response = await http.put(
       Uri.parse('$baseUrl/$id'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(user.toJson()),
+      body: jsonEncode(updateData),
     );
 
+    print('Respuesta del servidor: ${response.statusCode}');
     if (response.statusCode == 200) {
-      return User.fromJson(jsonDecode(response.body));
+      print('Usuario actualizado correctamente.');
+      return true;
     } else {
-      throw Exception('Error actualitzant usuari: ${response.statusCode}');
+      print('Error al actualizar usuario: ${response.body}');
+      throw Exception('Error actualizando usuario: ${response.statusCode}');
     }
   }
 
@@ -73,6 +82,31 @@ class UserService {
       return true;
     } else {
       throw Exception('Error eliminant usuari: ${response.statusCode}');
+    }
+  }
+
+  static Future<bool> changePassword(String userId, String newPassword) async {
+    print('Intentando cambiar contraseña...');
+    print('URL: $baseUrl/$userId/change-password'); // Verifica que esta ruta coincida con el backend
+    print('Body: ${jsonEncode({'newPassword': newPassword})}'); // Verifica los datos enviados
+
+    if (newPassword.isEmpty) {
+      throw Exception('Error: La nueva contraseña no puede estar vacía.');
+    }
+
+    final response = await http.put(
+      Uri.parse('$baseUrl/$userId/change-password'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'newPassword': newPassword}),
+    );
+
+    print('Respuesta del servidor: ${response.statusCode}');
+    if (response.statusCode == 200) {
+      print('Contraseña cambiada correctamente.');
+      return true;
+    } else {
+      print('Error al cambiar contraseña: ${response.body}');
+      throw Exception('Error changing password: ${response.statusCode}');
     }
   }
 }
